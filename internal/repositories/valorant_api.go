@@ -25,8 +25,6 @@ const (
 	entitlementsURL  = "https://entitlements.auth.riotgames.com/api/token/v1"
 	userInfoURL      = "https://auth.riotgames.com/userinfo"
 	storeURL         = "https://pd.%s.a.pvp.net/store/v3/storefront/%s"
-	storeURLV2       = "https://pd.%s.a.pvp.net/store/v2/storefront/%s"
-	storeURLV1       = "https://pd.%s.a.pvp.net/store/v1/storefront/%s"
 	walletURL        = "https://pd.%s.a.pvp.net/store/v1/wallet/%s"
 	contentURL       = "https://shared.%s.a.pvp.net/content-service/v3/content"
 	versionURL       = "https://valorant-api.com/v1/version"
@@ -502,42 +500,6 @@ func (v *ValorantAPI) GetStoreOffers(userID, accessToken, entitlementToken strin
 		if resp.StatusCode == 404 {
 			fmt.Printf("警告: 获取到404错误，这可能意味着API接口路径已更改或用户区域不正确\n")
 			fmt.Printf("尝试: 1. 确认用户所在区域 2. 验证API接口路径是否最新 3. 检查Riot客户端版本\n")
-
-			// 尝试备用URL格式 - 有些区域可能使用不同的URL格式
-			altURL := fmt.Sprintf("https://pd.%s.a.pvp.net/store/v2/storefront/%s", v.region, userID)
-			fmt.Printf("将尝试备用URL: %s\n", altURL)
-
-			// 创建备用请求
-			altReq, err := http.NewRequest(http.MethodPost, altURL, bytes.NewBufferString("{}"))
-			if err == nil {
-				for key, values := range req.Header {
-					if key != "X-Riot-ClientVersion" {
-						for _, value := range values {
-							altReq.Header.Add(key, value)
-						}
-					}
-				}
-				altReq.Header.Set("X-Riot-ClientVersion", v.clientVersion)
-
-				fmt.Printf("正在尝试备用URL请求...\n")
-				altResp, altErr := v.retryHTTPRequest(altReq, 2)
-				if altErr == nil && altResp.StatusCode >= 200 && altResp.StatusCode < 300 {
-					fmt.Printf("备用URL请求成功，状态码: %d\n", altResp.StatusCode)
-
-					// 解析响应
-					var storeResp models.ValorantStoreResponse
-					if err := json.NewDecoder(altResp.Body).Decode(&storeResp); err == nil {
-						altResp.Body.Close()
-						fmt.Printf("成功获取商店数据(备用URL)\n")
-						return &storeResp, nil
-					}
-					altResp.Body.Close()
-				}
-
-				if altResp != nil {
-					altResp.Body.Close()
-				}
-			}
 		}
 
 		return nil, fmt.Errorf("获取商店数据失败，状态码: %d, 响应: %s", resp.StatusCode, bodyStr)
